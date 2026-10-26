@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>텍스트 → 음성 변환 (MP3 / WAV)</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--tx:#1b1f24;--sub:#667085;--bd:#d9dde3;--ac:#2f6fed;--ac2:#fff}
+@media (prefers-color-scheme:dark){:root{--bg:#14171c;--card:#1d2128;--tx:#e8ebf0;--sub:#9aa4b2;--bd:#323944;--ac:#5b8cff;--ac2:#0b0f16}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,"Noto Sans KR",sans-serif;line-height:1.5}
+main{max-width:760px;margin:0 auto;padding:20px 16px 60px}
+h1{font-size:1.4rem;margin:8px 0 4px}
+p.sub{color:var(--sub);margin:0 0 16px;font-size:.92rem}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:14px}
+label{display:block;font-size:.85rem;color:var(--sub);margin:10px 0 4px}
+select,input[type=text],input[type=password],textarea{width:100%;padding:9px 10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font:inherit}
+textarea{min-height:220px;resize:vertical}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:520px){.row{grid-template-columns:1fr}}
+button{padding:11px 18px;border:0;border-radius:8px;background:var(--ac);color:var(--ac2);font:inherit;font-weight:600;cursor:pointer}
+button.sec{background:transparent;color:var(--tx);border:1px solid var(--bd)}
+button:disabled{opacity:.5;cursor:not-allowed}
+.bar{height:8px;background:var(--bd);border-radius:4px;overflow:hidden;margin-top:10px}
+.bar>i{display:block;height:100%;width:0;background:var(--ac);transition:width .2s}
+.msg{font-size:.88rem;color:var(--sub);margin-top:8px;min-height:1.3em;white-space:pre-wrap}
+.msg.err{color:#d6453d}
+.inline{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.inline label{display:inline;margin:0;color:var(--tx)}
+.hint{font-size:.82rem;color:var(--sub);margin:6px 0 0}
+audio{width:100%;margin-top:12px}
+a.dl{display:inline-block;margin-top:10px;padding:10px 16px;border-radius:8px;background:var(--ac);color:var(--ac2);text-decoration:none;font-weight:600}
+footer{font-size:.78rem;color:var(--sub);margin-top:18px}
+.hide{display:none}
+</style>
+</head>
+<body>
+<main>
+<h1>텍스트 → 음성 변환</h1>
+<p class="sub">텍스트를 붙여넣거나 .txt 파일을 올리면 MP3 / WAV로 변환합니다. 글자 수 제한 없음(긴 글은 자동으로 나눠 변환 후 합침).</p>
+
+<div class="card">
+<div class="row">
+<div><label for="lang">언어</label><select id="lang"></select></div>
+<div><label>변환 방식</label>
+<span class="inline" style="padding-top:8px">
+<input type="radio" name="eng" id="e-br" value="browser" checked><label for="e-br">브라우저 모델 (무료)</label>
+<input type="radio" name="eng" id="e-az" value="azure"><label for="e-az">Azure (키 필요)</label></span></div>
+</div>
+<p class="hint" id="engHint"></p>
+
+<div id="azbox" class="hide">
+<div class="row">
+<div><label for="key">Azure Speech 키</label><input id="key" type="password" autocomplete="off" placeholder="Speech 리소스 키"></div>
+<div><label for="region">지역(Region)</label><input id="region" type="text" value="koreacentral"></div>
+</div>
+<div class="row">
+<div><label for="voice">목소리</label><select id="voice"></select></div>
+<div><label for="rate">속도</label>
+<select id="rate"><option value="-20%">느리게 (0.8x)</option><option value="0%" selected>보통 (1.0x)</option><option value="20%">빠르게 (1.2x)</option><option value="50%">매우 빠르게 (1.5x)</option></select></div>
+</div>
+<span class="inline" style="margin-top:8px"><input type="checkbox" id="remember"><label for="remember">이 브라우저에 키 기억 (키는 Azure로만 전송됩니다)</label></span>
+</div>
+
+<label>출력 형식</label>
+<span class="inline"><input type="radio" name="fmt" id="f-mp3" value="mp3" checked><label for="f-mp3">MP3</label>
+<input type="radio" name="fmt" id="f-wav" value="wav"><label for="f-wav">WAV</label></span>
+
+<label for="txt">텍스트</label>
+<textarea id="txt" placeholder="여기에 텍스트를 붙여넣으세요"></textarea>
+<div class="row" style="margin-top:8px">
+<div><input type="file" id="file" accept=".txt,text/plain"></div>
+<div style="text-align:right;color:var(--sub);font-size:.85rem;padding-top:8px"><span id="cnt">0</span>자</div>
+</div>
+<div class="inline" style="margin-top:12px"><button id="go">변환하기</button><button id="stop" class="sec hide">중지</button></div>
+<div class="bar"><i id="pg"></i></div>
+<div class="msg" id="msg"></div>
+<div id="out"></div>
+</div>
+
+<footer>
+브라우저 모델: Meta MMS-TTS (CC BY-NC 4.0, 비상업 전용). ONNX 변환: Xenova(한국어·영어·스페인어·독일어·프랑스어), souba67(인도네시아어). 첫 사용 시 언어별로 모델(수십~100MB 이상)을 내려받고 이후 브라우저에 캐시됩니다. 이 페이지에 광고·제휴 링크 등 수익 요소를 넣을 경우 브라우저 모델은 다른 모델로 교체해야 합니다.
+</footer>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
+<script>
+const TFJS="https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.1";
+// m: 브라우저 모델(없으면 Azure 전용), d: dtype, kor: 한글 로마자 변환 필요
+const LANGS={
+ko:{n:"한국어",c:"ko-KR",m:"Xenova/mms-tts-kor",d:"q8",kor:1,v:[["SunHi (여)","ko-KR-SunHiNeural"],["InJoon (남)","ko-KR-InJoonNeural"]]},
+en:{n:"English",c:"en-US",m:"Xenova/mms-tts-eng",d:"q8",v:[["Jenny (F)","en-US-JennyNeural"],["Guy (M)","en-US-GuyNeural"]]},
+id:{n:"Bahasa Indonesia",c:"id-ID",m:"souba67/mms-tts-ind-ONNX",d:"fp32",v:[["Gadis (F)","id-ID-GadisNeural"],["Ardi (M)","id-ID-ArdiNeural"]]},
+zh:{n:"中文 (普通话)",c:"zh-CN",v:[["Xiaoxiao (女)","zh-CN-XiaoxiaoNeural"],["Yunxi (男)","zh-CN-YunxiNeural"]]},
+ja:{n:"日本語",c:"ja-JP",v:[["Nanami (女)","ja-JP-NanamiNeural"],["Keita (男)","ja-JP-KeitaNeural"]]},
+es:{n:"Español",c:"es-ES",m:"Xenova/mms-tts-spa",d:"q8",v:[["Elvira (F)","es-ES-ElviraNeural"],["Alvaro (M)","es-ES-AlvaroNeural"]]},
+de:{n:"Deutsch",c:"de-DE",m:"Xenova/mms-tts-deu",d:"q8",v:[["Katja (F)","de-DE-KatjaNeural"],["Conrad (M)","de-DE-ConradNeural"]]},
+fr:{n:"Français",c:"fr-FR",m:"Xenova/mms-tts-fra",d:"q8",v:[["Denise (F)","fr-FR-DeniseNeural"],["Henri (M)","fr-FR-HenriNeural"]]}
+};
+const $=id=>document.getElementById(id);
+let url=null,cancel=false,lib=null;const pipes={};
+
+try{const k=localStorage.getItem("tts_key");if(k){$("key").value=k;$("remember").checked=true}
+const r=localStorage.getItem("tts_region");if(r)$("region").value=r}catch(e){}
+
+for(const k in LANGS){const o=document.createElement("option");o.value=k;o.textContent=LANGS[k].n;$("lang").appendChild(o)}
+const engine=()=>document.querySelector("input[name=eng]:checked").value;
+const fmt=()=>document.querySelector("input[name=fmt]:checked").value;
+
+function refresh(){
+  const L=LANGS[$("lang").value];
+  $("e-br").disabled=!L.m;
+  if(!L.m)$("e-az").checked=true;
+  $("engHint").textContent=L.m?"":"이 언어는 브라우저용 모델이 없어 Azure 키가 필요합니다.";
+  $("azbox").classList.toggle("hide",engine()!=="azure");
+  $("voice").innerHTML="";
+  for(const [n,v] of L.v){const o=document.createElement("option");o.value=v;o.textContent=n;$("voice").appendChild(o)}
+}
+$("lang").onchange=refresh;document.querySelectorAll("input[name=eng]").forEach(e=>e.onchange=refresh);refresh();
+
+$("txt").oninput=()=>$("cnt").textContent=$("txt").value.length.toLocaleString();
+$("file").onchange=async e=>{const f=e.target.files[0];if(!f)return;$("txt").value=await f.text();$("txt").oninput()};
+
+const tick=()=>new Promise(r=>setTimeout(r,0));
+function esc(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&apos;")}
+
+// 문장 단위로 나누고 max자 이하로 묶기
+function split(text,max){
+  const parts=text.replace(/\r/g,"").split(/(?<=[.!?。！？\n])/);
+  const out=[];let cur="";
+  const push=()=>{if(cur.trim())out.push(cur.trim());cur=""};
+  for(let p of parts){
+    while(p.length>max){
+      let cut=p.lastIndexOf(" ",max);if(cut<max*0.5)cut=max;
+      push();out.push(p.slice(0,cut).trim());p=p.slice(cut);
+    }
+    if(cur.length+p.length>max)push();
+    cur+=p;
+  }
+  push();
+  return out.filter(s=>/[\p{L}\p{N}]/u.test(s));
+}
+
+// 한글 → 로마자 (MMS 한국어 모델은 uroman 형태 입력 필요)
+const CHO=["g","kk","n","d","tt","r","m","b","pp","s","ss","","j","jj","ch","k","t","p","h"];
+const JUNG=["a","ae","ya","yae","eo","e","yeo","ye","o","wa","wae","oe","yo","u","wo","we","wi","yu","eu","ui","i"];
+const JONG=["","k","k","k","n","n","n","t","l","k","m","l","l","l","p","l","m","p","p","t","t","ng","t","t","k","t","p","t"];
+function romanize(s){
+  let o="";
+  for(const ch of s){
+    const c=ch.codePointAt(0);
+    if(c>=0xAC00&&c<=0xD7A3){const x=c-0xAC00;o+=CHO[Math.floor(x/588)]+JUNG[Math.floor(x%588/28)]+JONG[x%28]}
+    else o+=ch;
+  }
+  return o;
+}
+function cleanForMMS(s,L){
+  if(L.kor)s=romanize(s);
+  return s.toLowerCase().replace(/[^\p{L}\s']/gu," ").replace(/\s+/g," ").trim();
+}
+
+async function getPipe(L){
+  if(pipes[L.m])return pipes[L.m];
+  if(!lib)lib=await import(TFJS);
+  const p=await lib.pipeline("text-to-speech",L.m,{dtype:L.d,progress_callback:e=>{
+    if(e.status==="progress")$("msg").textContent=`모델 내려받는 중… ${e.file.split("/").pop()} ${Math.round(e.progress)}%`;
+  }});
+  return pipes[L.m]=p;
+}
+
+function toInt16(f){const o=new Int16Array(f.length);for(let i=0;i<f.length;i++){const v=Math.max(-1,Math.min(1,f[i]));o[i]=v<0?v*32768:v*32767}return o}
+
+function wavBlob(chunks,sr){
+  const len=chunks.reduce((a,b)=>a+b.length*2,0);
+  const h=new ArrayBuffer(44),v=new DataView(h);
+  const w=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i))};
+  w(0,"RIFF");v.setUint32(4,36+len,true);w(8,"WAVE");w(12,"fmt ");v.setUint32(16,16,true);
+  v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,sr,true);v.setUint32(28,sr*2,true);
+  v.setUint16(32,2,true);v.setUint16(34,16,true);w(36,"data");v.setUint32(40,len,true);
+  return new Blob([h,...chunks],{type:"audio/wav"});
+}
+
+async function runBrowser(text,L){
+  const chunks=split(text,180).map(s=>cleanForMMS(s,L)).filter(s=>s);
+  if(!chunks.length)throw new Error("읽을 수 있는 글자가 없습니다 (이 언어의 문자만 읽을 수 있고 숫자는 건너뜁니다).");
+  $("msg").textContent="모델 준비 중…";
+  const tts=await getPipe(L);
+  let sr=16000,enc=null;const mp3=[],pcm=[];
+  for(let i=0;i<chunks.length;i++){
+    if(cancel)throw new Error("중지됨");
+    $("msg").textContent=`변환 중… ${i+1} / ${chunks.length}`;
+    const out=await tts(chunks[i]);
+    sr=out.sampling_rate;
+    const a=toInt16(out.audio),gap=new Int16Array(Math.round(sr*0.25));
+    const parts=[a,gap];
+    if(fmt()==="mp3"){
+      if(!enc)enc=new lamejs.Mp3Encoder(1,sr,96);
+      for(const p of parts)for(let j=0;j<p.length;j+=1152){const b=enc.encodeBuffer(p.subarray(j,j+1152));if(b.length)mp3.push(b)}
+    }else pcm.push(...parts);
+    $("pg").style.width=((i+1)/chunks.length*100)+"%";
+    await tick();
+  }
+  if(fmt()==="mp3"){const b=enc.flush();if(b.length)mp3.push(b);return new Blob(mp3,{type:"audio/mpeg"})}
+  return wavBlob(pcm,sr);
+}
+
+// ---------- Azure ----------
+async function azSynth(chunk,L,f,tries=3){
+  const key=$("key").value.trim(),region=$("region").value.trim();
+  const voice=$("voice").value,rate=$("rate").value;
+  const ssml=`<speak version='1.0' xml:lang='${L.c}'><voice xml:lang='${L.c}' name='${voice}'><prosody rate='${rate}'>${esc(chunk)}</prosody></voice></speak>`;
+  const of=f==="mp3"?"audio-24khz-96kbitrate-mono-mp3":"riff-24khz-16bit-mono-pcm";
+  for(let i=1;i<=tries;i++){
+    try{
+      const r=await fetch(`https://${region}.tts.speech.microsoft.com/cognitiveservices/v1`,{method:"POST",
+        headers:{"Ocp-Apim-Subscription-Key":key,"Content-Type":"application/ssml+xml","X-Microsoft-OutputFormat":of},body:ssml});
+      if(r.status===401||r.status===403)throw Object.assign(new Error("키 또는 지역이 올바르지 않습니다 ("+r.status+")"),{fatal:true});
+      if(r.status===429&&i<tries){await new Promise(s=>setTimeout(s,2000*i));continue}
+      if(!r.ok)throw new Error("서버 오류 "+r.status);
+      return await r.arrayBuffer();
+    }catch(e){if(e.fatal||i===tries)throw e;await new Promise(s=>setTimeout(s,1000*i))}
+  }
+}
+function wavData(buf){
+  const v=new DataView(buf);let p=12;
+  while(p+8<=buf.byteLength){
+    const id=String.fromCharCode(v.getUint8(p),v.getUint8(p+1),v.getUint8(p+2),v.getUint8(p+3));
+    if(id==="data")return new Uint8Array(buf,p+8);
+    p+=8+v.getUint32(p+4,true);
+  }
+  return new Uint8Array(buf,44);
+}
+async function runAzure(text,L){
+  const f=fmt(),chunks=split(text,2000),bufs=[];
+  for(let i=0;i<chunks.length;i++){
+    if(cancel)throw new Error("중지됨");
+    $("msg").textContent=`변환 중… ${i+1} / ${chunks.length}`;
+    bufs.push(await azSynth(chunks[i],L,f));
+    $("pg").style.width=((i+1)/chunks.length*100)+"%";
+  }
+  if(f==="mp3")return new Blob(bufs,{type:"audio/mpeg"});
+  const pcms=bufs.map(wavData),len=pcms.reduce((a,b)=>a+b.length,0);
+  const h=new ArrayBuffer(44),v=new DataView(h);
+  const w=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i))};
+  w(0,"RIFF");v.setUint32(4,36+len,true);w(8,"WAVE");w(12,"fmt ");v.setUint32(16,16,true);
+  v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,24000,true);v.setUint32(28,48000,true);
+  v.setUint16(32,2,true);v.setUint16(34,16,true);w(36,"data");v.setUint32(40,len,true);
+  return new Blob([h,...pcms],{type:"audio/wav"});
+}
+
+$("stop").onclick=()=>{cancel=true};
+$("go").onclick=async()=>{
+  const text=$("txt").value.trim(),msg=$("msg"),L=LANGS[$("lang").value];
+  msg.className="msg";$("out").innerHTML="";$("pg").style.width="0";cancel=false;
+  if(!text){msg.className="msg err";msg.textContent="텍스트를 입력하거나 파일을 올리세요.";return}
+  if(engine()==="azure"){
+    const key=$("key").value.trim();
+    if(!key){msg.className="msg err";msg.textContent="Azure Speech 키를 입력하세요.";return}
+    try{if($("remember").checked){localStorage.setItem("tts_key",key);localStorage.setItem("tts_region",$("region").value.trim())}else localStorage.removeItem("tts_key")}catch(e){}
+  }
+  $("go").disabled=true;$("stop").classList.remove("hide");
+  try{
+    const blob=engine()==="azure"?await runAzure(text,L):await runBrowser(text,L);
+    if(url)URL.revokeObjectURL(url);
+    url=URL.createObjectURL(blob);
+    const ext=fmt(),name=`tts_${$("lang").value}_${Date.now()}.${ext}`;
+    $("out").innerHTML=`<audio controls src="${url}"></audio><a class="dl" href="${url}" download="${name}">${ext.toUpperCase()} 다운로드 (${(blob.size/1048576).toFixed(1)} MB)</a>`;
+    msg.textContent="완료!";
+  }catch(e){msg.className="msg err";msg.textContent="실패: "+e.message}
+  $("go").disabled=false;$("stop").classList.add("hide");
+};
+</script>
+</body>
+</html>
