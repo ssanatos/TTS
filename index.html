@@ -44,7 +44,8 @@ footer{font-size:.78rem;color:var(--sub);margin-top:18px}
 <div><label for="lang">언어</label><select id="lang"></select></div>
 <div><label>변환 방식</label>
 <span class="inline" style="padding-top:8px">
-<input type="radio" name="eng" id="e-br" value="browser" checked><label for="e-br">AI 모델 (무료·다운로드)</label>
+<input type="radio" name="eng" id="e-su" value="super" checked><label for="e-su">Supertonic 3 (고음질 AI·다운로드)</label>
+<input type="radio" name="eng" id="e-br" value="browser"><label for="e-br">MMS (경량 AI·다운로드)</label>
 <input type="radio" name="eng" id="e-sp" value="speak"><label for="e-sp">기기 음성 (듣기만)</label>
 <input type="radio" name="eng" id="e-az" value="azure"><label for="e-az">Azure (키 필요·다운로드)</label></span></div>
 </div>
@@ -80,26 +81,30 @@ footer{font-size:.78rem;color:var(--sub);margin-top:18px}
 </div>
 
 <footer>
-AI 모델: Meta MMS-TTS (CC BY-NC 4.0, 비상업 전용). ONNX 변환: Xenova(한국어·영어·스페인어·독일어·프랑스어), souba67(인도네시아어). 첫 사용 시 언어별로 모델(수십~100MB 이상)을 내려받고 이후 브라우저에 캐시됩니다. '기기 음성'은 브라우저/운영체제에 내장된 음성으로, 파일 저장 없이 듣기만 가능하며 목소리 종류는 기기마다 다릅니다. 이 페이지에 광고·제휴 링크 등 수익 요소를 넣을 경우 AI 모델은 다른 모델로 교체해야 합니다.
+Supertonic 3: Supertone Inc. (모델 OpenRAIL-M 라이선스, 사용 제한 조항 있음 / Transformers.js용 ONNX 재패키징: open-world-group / 원 프로젝트는 2026년 7월 아카이브됨). MMS: Meta MMS-TTS (CC BY-NC 4.0, 비상업 전용). ONNX 변환: Xenova(한국어·영어·스페인어·독일어·프랑스어), souba67(인도네시아어). 첫 사용 시 언어별로 모델(수십~100MB 이상)을 내려받고 이후 브라우저에 캐시됩니다. '기기 음성'은 브라우저/운영체제에 내장된 음성으로, 파일 저장 없이 듣기만 가능하며 목소리 종류는 기기마다 다릅니다. 이 페이지에 광고·제휴 링크 등 수익 요소를 넣을 경우 MMS 모델은 다른 모델로 교체해야 합니다.
 </footer>
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
 <script>
-const TFJS="https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.1";
+const TFJS="https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.1";   // MMS용
+const TFJS4="https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.2.0";  // Supertonic용
+const SUPER_MODEL="open-world-group/Supertonic-3-ONNX";
+const SUPER_VOICES=`https://huggingface.co/${SUPER_MODEL}/resolve/main/voices/`;
+const SUPER_V=[...[1,2,3,4,5].map(i=>["여성 "+i+" (F"+i+")","F"+i]),...[1,2,3,4,5].map(i=>["남성 "+i+" (M"+i+")","M"+i])];
 // m: 브라우저 모델(없으면 Azure 전용), d: dtype, kor: 한글 로마자 변환 필요
 const LANGS={
-ko:{n:"한국어",c:"ko-KR",m:"Xenova/mms-tts-kor",d:"q8",kor:1,v:[["SunHi (여)","ko-KR-SunHiNeural"],["InJoon (남)","ko-KR-InJoonNeural"],["JiMin (여)","ko-KR-JiMinNeural"],["SeoHyeon (여)","ko-KR-SeoHyeonNeural"],["BongJin (남)","ko-KR-BongJinNeural"],["GookMin (남)","ko-KR-GookMinNeural"]]},
-en:{n:"English",c:"en-US",m:"Xenova/mms-tts-eng",d:"q8",v:[["Jenny (F)","en-US-JennyNeural"],["Guy (M)","en-US-GuyNeural"],["Aria (F)","en-US-AriaNeural"],["Davis (M)","en-US-DavisNeural"],["Emma (F)","en-US-EmmaNeural"],["Andrew (M)","en-US-AndrewNeural"]]},
-id:{n:"Bahasa Indonesia",c:"id-ID",m:"souba67/mms-tts-ind-ONNX",d:"fp32",v:[["Gadis (F)","id-ID-GadisNeural"],["Ardi (M)","id-ID-ArdiNeural"]]},
+ko:{s:1,n:"한국어",c:"ko-KR",m:"Xenova/mms-tts-kor",d:"q8",kor:1,v:[["SunHi (여)","ko-KR-SunHiNeural"],["InJoon (남)","ko-KR-InJoonNeural"],["JiMin (여)","ko-KR-JiMinNeural"],["SeoHyeon (여)","ko-KR-SeoHyeonNeural"],["BongJin (남)","ko-KR-BongJinNeural"],["GookMin (남)","ko-KR-GookMinNeural"]]},
+en:{s:1,n:"English",c:"en-US",m:"Xenova/mms-tts-eng",d:"q8",v:[["Jenny (F)","en-US-JennyNeural"],["Guy (M)","en-US-GuyNeural"],["Aria (F)","en-US-AriaNeural"],["Davis (M)","en-US-DavisNeural"],["Emma (F)","en-US-EmmaNeural"],["Andrew (M)","en-US-AndrewNeural"]]},
+id:{s:1,n:"Bahasa Indonesia",c:"id-ID",m:"souba67/mms-tts-ind-ONNX",d:"fp32",v:[["Gadis (F)","id-ID-GadisNeural"],["Ardi (M)","id-ID-ArdiNeural"]]},
 zh:{n:"中文 (普通话)",c:"zh-CN",v:[["Xiaoxiao (女)","zh-CN-XiaoxiaoNeural"],["Yunxi (男)","zh-CN-YunxiNeural"],["Xiaoyi (女)","zh-CN-XiaoyiNeural"],["Yunjian (男)","zh-CN-YunjianNeural"],["Yunyang (男)","zh-CN-YunyangNeural"]]},
-ja:{n:"日本語",c:"ja-JP",v:[["Nanami (女)","ja-JP-NanamiNeural"],["Keita (男)","ja-JP-KeitaNeural"],["Aoi (女)","ja-JP-AoiNeural"],["Daichi (男)","ja-JP-DaichiNeural"],["Mayu (女)","ja-JP-MayuNeural"],["Naoki (男)","ja-JP-NaokiNeural"]]},
-es:{n:"Español",c:"es-ES",m:"Xenova/mms-tts-spa",d:"q8",v:[["Elvira (F)","es-ES-ElviraNeural"],["Alvaro (M)","es-ES-AlvaroNeural"],["Abril (F)","es-ES-AbrilNeural"],["Dario (M)","es-ES-DarioNeural"],["Irene (F)","es-ES-IreneNeural"],["Saul (M)","es-ES-SaulNeural"]]},
-de:{n:"Deutsch",c:"de-DE",m:"Xenova/mms-tts-deu",d:"q8",v:[["Katja (F)","de-DE-KatjaNeural"],["Conrad (M)","de-DE-ConradNeural"],["Amala (F)","de-DE-AmalaNeural"],["Bernd (M)","de-DE-BerndNeural"],["Louisa (F)","de-DE-LouisaNeural"],["Kasper (M)","de-DE-KasperNeural"]]},
-fr:{n:"Français",c:"fr-FR",m:"Xenova/mms-tts-fra",d:"q8",v:[["Denise (F)","fr-FR-DeniseNeural"],["Henri (M)","fr-FR-HenriNeural"],["Eloise (F)","fr-FR-EloiseNeural"],["Alain (M)","fr-FR-AlainNeural"],["Brigitte (F)","fr-FR-BrigitteNeural"],["Jerome (M)","fr-FR-JeromeNeural"]]}
+ja:{s:1,n:"日本語",c:"ja-JP",v:[["Nanami (女)","ja-JP-NanamiNeural"],["Keita (男)","ja-JP-KeitaNeural"],["Aoi (女)","ja-JP-AoiNeural"],["Daichi (男)","ja-JP-DaichiNeural"],["Mayu (女)","ja-JP-MayuNeural"],["Naoki (男)","ja-JP-NaokiNeural"]]},
+es:{s:1,n:"Español",c:"es-ES",m:"Xenova/mms-tts-spa",d:"q8",v:[["Elvira (F)","es-ES-ElviraNeural"],["Alvaro (M)","es-ES-AlvaroNeural"],["Abril (F)","es-ES-AbrilNeural"],["Dario (M)","es-ES-DarioNeural"],["Irene (F)","es-ES-IreneNeural"],["Saul (M)","es-ES-SaulNeural"]]},
+de:{s:1,n:"Deutsch",c:"de-DE",m:"Xenova/mms-tts-deu",d:"q8",v:[["Katja (F)","de-DE-KatjaNeural"],["Conrad (M)","de-DE-ConradNeural"],["Amala (F)","de-DE-AmalaNeural"],["Bernd (M)","de-DE-BerndNeural"],["Louisa (F)","de-DE-LouisaNeural"],["Kasper (M)","de-DE-KasperNeural"]]},
+fr:{s:1,n:"Français",c:"fr-FR",m:"Xenova/mms-tts-fra",d:"q8",v:[["Denise (F)","fr-FR-DeniseNeural"],["Henri (M)","fr-FR-HenriNeural"],["Eloise (F)","fr-FR-EloiseNeural"],["Alain (M)","fr-FR-AlainNeural"],["Brigitte (F)","fr-FR-BrigitteNeural"],["Jerome (M)","fr-FR-JeromeNeural"]]}
 };
 const $=id=>document.getElementById(id);
-let url=null,cancel=false,lib=null;const pipes={};
+let url=null,cancel=false,lib=null,lib4=null,superPipe=null;const pipes={},vcache={};
 
 try{const k=localStorage.getItem("tts_key");if(k){$("key").value=k;$("remember").checked=true}
 const r=localStorage.getItem("tts_region");if(r)$("region").value=r}catch(e){}
@@ -117,16 +122,21 @@ function loadWs(L){
 function addOpt(sel,v,t){const o=document.createElement("option");o.value=v;o.textContent=t;sel.appendChild(o)}
 function refresh(){
   const L=LANGS[$("lang").value];
-  $("e-br").disabled=!L.m;
-  if(!L.m&&engine()==="browser")$("e-az").checked=true;
+  const avail={browser:!!L.m,super:!!L.s,speak:true,azure:true};
+  $("e-br").disabled=!avail.browser;$("e-su").disabled=!avail.super;
+  if(!avail[engine()])(L.s?$("e-su"):$("e-az")).checked=true;
   const e=engine();
-  $("engHint").textContent=L.m?"":"이 언어는 AI 모델이 없어 다운로드하려면 Azure 키가 필요합니다. '기기 음성'은 듣기만 가능합니다.";
+  $("engHint").textContent=
+    e==="super"?"Supertonic 3: 고음질, 목소리 10종. 첫 사용 시 모델을 내려받습니다(WebGPU 약 200MB, 그 외 약 400MB). 이후엔 캐시됩니다."
+    :e==="browser"?"MMS: 가볍지만 음질은 보통이고 목소리는 하나뿐입니다."
+    :(!L.s&&!L.m)?"이 언어는 브라우저용 AI 모델이 없어 다운로드하려면 Azure 키가 필요합니다. '기기 음성'은 듣기만 가능합니다.":"";
   $("azbox").classList.toggle("hide",e!=="azure");
   $("ratebox").classList.toggle("hide",e==="browser");
   $("fmtbox").classList.toggle("hide",e==="speak");
   $("go").textContent=e==="speak"?"듣기":"변환하기";
   const sel=$("voice");sel.innerHTML="";sel.disabled=false;
   if(e==="azure"){for(const [n,v] of L.v)addOpt(sel,v,n)}
+  else if(e==="super"){for(const [n,v] of SUPER_V)addOpt(sel,v,n)}
   else if(e==="speak"){
     loadWs(L);
     if(!wsVoices.length)addOpt(sel,"","기기 기본 음성");
@@ -198,21 +208,53 @@ function wavBlob(chunks,sr){
   return new Blob([h,...chunks],{type:"audio/wav"});
 }
 
-async function runBrowser(text,L){
-  const chunks=split(text,180).map(s=>cleanForMMS(s,L)).filter(s=>s);
-  if(!chunks.length)throw new Error("읽을 수 있는 글자가 없습니다 (이 언어의 문자만 읽을 수 있고 숫자는 건너뜁니다).");
+async function getSuper(){
+  if(superPipe)return superPipe;
+  if(!lib4)lib4=await import(TFJS4);
+  const tries=navigator.gpu?[{device:"webgpu",dtype:"fp16"},{device:"wasm",dtype:"fp32"}]:[{device:"wasm",dtype:"fp32"}];
+  let last;
+  for(const t of tries){
+    try{
+      return superPipe=await lib4.pipeline("text-to-speech",SUPER_MODEL,{...t,progress_callback:e=>{
+        if(e.status==="progress")$("msg").textContent=`모델 내려받는 중… ${e.file.split("/").pop()} ${Math.round(e.progress)}%`;
+      }});
+    }catch(err){last=err}
+  }
+  throw last;
+}
+async function getVoice(v){
+  if(!vcache[v]){
+    const r=await fetch(SUPER_VOICES+v+".bin");
+    if(!r.ok)throw new Error("목소리 파일을 받지 못했습니다 ("+r.status+")");
+    vcache[v]=new Float32Array(await r.arrayBuffer());
+  }
+  return vcache[v];
+}
+async function runModel(text,L,kind){
+  const code=$("lang").value;
+  let chunks,synth;
   $("msg").textContent="모델 준비 중…";
-  const tts=await getPipe(L);
+  if(kind==="super"){
+    chunks=split(text,(code==="ko"||code==="ja")?120:300);
+    const tts=await getSuper(),emb=await getVoice($("voice").value);
+    const speed=Math.min(1.5,Math.max(0.7,1+parseFloat($("rate").value)/100));
+    synth=c=>tts(`<${code}>${c}</${code}>`,{speaker_embeddings:emb,num_inference_steps:8,speed});
+  }else{
+    chunks=split(text,180).map(s=>cleanForMMS(s,L)).filter(s=>s);
+    const tts=await getPipe(L);
+    synth=c=>tts(c);
+  }
+  if(!chunks.length)throw new Error("읽을 수 있는 글자가 없습니다.");
   let sr=16000,enc=null;const mp3=[],pcm=[];
   for(let i=0;i<chunks.length;i++){
     if(cancel)throw new Error("중지됨");
     $("msg").textContent=`변환 중… ${i+1} / ${chunks.length}`;
-    const out=await tts(chunks[i]);
+    const out=await synth(chunks[i]);
     sr=out.sampling_rate;
     const a=toInt16(out.audio),gap=new Int16Array(Math.round(sr*0.25));
     const parts=[a,gap];
     if(fmt()==="mp3"){
-      if(!enc)enc=new lamejs.Mp3Encoder(1,sr,96);
+      if(!enc)enc=new lamejs.Mp3Encoder(1,sr,sr>=32000?128:96);
       for(const p of parts)for(let j=0;j<p.length;j+=1152){const b=enc.encodeBuffer(p.subarray(j,j+1152));if(b.length)mp3.push(b)}
     }else pcm.push(...parts);
     $("pg").style.width=((i+1)/chunks.length*100)+"%";
@@ -301,7 +343,7 @@ $("go").onclick=async()=>{
   $("go").disabled=true;$("stop").classList.remove("hide");
   try{
     if(engine()==="speak"){await runSpeak(text,L);msg.textContent=cancel?"중지됨":"재생 완료";$("go").disabled=false;$("stop").classList.add("hide");return}
-    const blob=engine()==="azure"?await runAzure(text,L):await runBrowser(text,L);
+    const blob=engine()==="azure"?await runAzure(text,L):await runModel(text,L,engine());
     if(url)URL.revokeObjectURL(url);
     url=URL.createObjectURL(blob);
     const ext=fmt(),name=`tts_${$("lang").value}_${Date.now()}.${ext}`;
