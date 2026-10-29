@@ -32,6 +32,8 @@ audio{width:100%;margin-top:12px}
 a.dl{display:inline-block;margin-top:10px;padding:10px 16px;border-radius:8px;background:var(--ac);color:var(--ac2);text-decoration:none;font-weight:600}
 footer{font-size:.78rem;color:var(--sub);margin-top:18px}
 .hide{display:none}
+.engs div{display:flex;gap:8px;align-items:center;margin:5px 0}
+.engs label{display:inline;margin:0;color:var(--tx);font-size:.95rem}
 </style>
 </head>
 <body>
@@ -40,15 +42,14 @@ footer{font-size:.78rem;color:var(--sub);margin-top:18px}
 <p class="sub">텍스트를 붙여넣거나 .txt 파일을 올리면 MP3 / WAV로 변환합니다. 글자 수 제한 없음(긴 글은 자동으로 나눠 변환 후 합침).</p>
 
 <div class="card">
-<div class="row">
-<div><label for="lang">언어</label><select id="lang"></select></div>
-<div><label>변환 방식</label>
-<span class="inline" style="padding-top:8px">
-<input type="radio" name="eng" id="e-su" value="super" checked><label for="e-su">Supertonic 3 (고음질 AI·다운로드)</label>
-<input type="radio" name="eng" id="e-br" value="browser"><label for="e-br">MMS (경량 AI·다운로드)</label>
-<input type="radio" name="eng" id="e-sp" value="speak"><label for="e-sp">기기 음성 (듣기만)</label>
-<input type="radio" name="eng" id="e-az" value="azure"><label for="e-az">Azure (키 필요·다운로드)</label></span></div>
+<label>변환 방식</label>
+<div class="engs">
+<div><input type="radio" name="eng" id="e-su" value="super" checked><label for="e-su">Supertonic 3 (고음질 AI · 31개 언어 · 다운로드)</label></div>
+<div><input type="radio" name="eng" id="e-br" value="browser"><label for="e-br">MMS (경량 AI · 6개 언어 · 다운로드)</label></div>
+<div><input type="radio" name="eng" id="e-sp" value="speak"><label for="e-sp">기기 음성 (듣기만 · 기기에 설치된 언어)</label></div>
+<div><input type="radio" name="eng" id="e-az" value="azure"><label for="e-az">Azure (키 필요 · 8개 언어 · 다운로드)</label></div>
 </div>
+<label for="lang">언어</label><select id="lang"></select>
 <p class="hint" id="engHint"></p>
 
 <div id="azbox" class="hide">
@@ -103,13 +104,18 @@ es:{s:1,n:"Español",c:"es-ES",m:"Xenova/mms-tts-spa",d:"q8",v:[["Elvira (F)","e
 de:{s:1,n:"Deutsch",c:"de-DE",m:"Xenova/mms-tts-deu",d:"q8",v:[["Katja (F)","de-DE-KatjaNeural"],["Conrad (M)","de-DE-ConradNeural"],["Amala (F)","de-DE-AmalaNeural"],["Bernd (M)","de-DE-BerndNeural"],["Louisa (F)","de-DE-LouisaNeural"],["Kasper (M)","de-DE-KasperNeural"]]},
 fr:{s:1,n:"Français",c:"fr-FR",m:"Xenova/mms-tts-fra",d:"q8",v:[["Denise (F)","fr-FR-DeniseNeural"],["Henri (M)","fr-FR-HenriNeural"],["Eloise (F)","fr-FR-EloiseNeural"],["Alain (M)","fr-FR-AlainNeural"],["Brigitte (F)","fr-FR-BrigitteNeural"],["Jerome (M)","fr-FR-JeromeNeural"]]}
 };
+const KR={ar:"아랍어",bg:"불가리아어",cs:"체코어",da:"덴마크어",de:"독일어",el:"그리스어",en:"영어",es:"스페인어",et:"에스토니아어",fi:"핀란드어",fr:"프랑스어",hi:"힌디어",hr:"크로아티아어",hu:"헝가리어",id:"인도네시아어",it:"이탈리아어",ja:"일본어",ko:"한국어",lt:"리투아니아어",lv:"라트비아어",nl:"네덜란드어",pl:"폴란드어",pt:"포르투갈어",ro:"루마니아어",ru:"러시아어",sk:"슬로바키아어",sl:"슬로베니아어",sv:"스웨덴어",tr:"튀르키예어",uk:"우크라이나어",vi:"베트남어",zh:"중국어"};
+// Supertonic 3만 지원하는 나머지 언어: [코드, 자국어 이름, 로케일]
+const EXTRA=[["ar","العربية","ar-SA"],["bg","Български","bg-BG"],["cs","Čeština","cs-CZ"],["da","Dansk","da-DK"],["el","Ελληνικά","el-GR"],["et","Eesti","et-EE"],["fi","Suomi","fi-FI"],["hi","हिन्दी","hi-IN"],["hr","Hrvatski","hr-HR"],["hu","Magyar","hu-HU"],["it","Italiano","it-IT"],["lt","Lietuvių","lt-LT"],["lv","Latviešu","lv-LV"],["nl","Nederlands","nl-NL"],["pl","Polski","pl-PL"],["pt","Português","pt-BR"],["ro","Română","ro-RO"],["ru","Русский","ru-RU"],["sk","Slovenčina","sk-SK"],["sl","Slovenščina","sl-SI"],["sv","Svenska","sv-SE"],["tr","Türkçe","tr-TR"],["uk","Українська","uk-UA"],["vi","Tiếng Việt","vi-VN"]];
+for(const [k,n,c] of EXTRA)LANGS[k]={n,c,s:1};
+const BASE=["ko","en","id","zh","ja","es","de","fr"];
+const ORDER=[...BASE,...Object.keys(LANGS).filter(k=>!BASE.includes(k)).sort((a,b)=>KR[a].localeCompare(KR[b],"ko"))];
 const $=id=>document.getElementById(id);
 let url=null,cancel=false,lib=null,lib4=null,superPipe=null;const pipes={},vcache={};
 
 try{const k=localStorage.getItem("tts_key");if(k){$("key").value=k;$("remember").checked=true}
 const r=localStorage.getItem("tts_region");if(r)$("region").value=r}catch(e){}
 
-for(const k in LANGS){const o=document.createElement("option");o.value=k;o.textContent=LANGS[k].n;$("lang").appendChild(o)}
 const engine=()=>document.querySelector("input[name=eng]:checked").value;
 const fmt=()=>document.querySelector("input[name=fmt]:checked").value;
 
@@ -120,16 +126,29 @@ function loadWs(L){
   wsVoices.sort((a,b)=>(b.localService-a.localService)||a.name.localeCompare(b.name));
 }
 function addOpt(sel,v,t){const o=document.createElement("option");o.value=v;o.textContent=t;sel.appendChild(o)}
-function refresh(){
-  const L=LANGS[$("lang").value];
-  const avail={browser:!!L.m,super:!!L.s,speak:true,azure:true};
-  $("e-br").disabled=!avail.browser;$("e-su").disabled=!avail.super;
-  if(!avail[engine()])(L.s?$("e-su"):$("e-az")).checked=true;
+function langLabel(k){const L=LANGS[k];return KR[k]&&KR[k]!==L.n?`${L.n} · ${KR[k]}`:L.n}
+function fillLangs(){
+  const e=engine(),sel=$("lang"),prev=sel.value;
+  const vs="speechSynthesis" in window?speechSynthesis.getVoices():[];
+  const have=new Set(vs.map(v=>v.lang.toLowerCase().slice(0,2)));
+  const ok=k=>{const L=LANGS[k];
+    if(e==="super")return !!L.s;
+    if(e==="browser")return !!L.m;
+    if(e==="azure")return !!L.v;
+    return have.size?have.has(L.c.slice(0,2).toLowerCase()):BASE.includes(k)};
+  sel.innerHTML="";
+  for(const k of ORDER)if(ok(k))addOpt(sel,k,langLabel(k));
+  if([...sel.options].some(o=>o.value===prev))sel.value=prev;
+}
+function refresh(full=true){
+  if(full)fillLangs();
+  const L=LANGS[$("lang").value]||{v:[],c:"en-US"};
   const e=engine();
   $("engHint").textContent=
     e==="super"?"Supertonic 3: 고음질, 목소리 10종. 첫 사용 시 모델을 내려받습니다(WebGPU 약 200MB, 그 외 약 400MB). 이후엔 캐시됩니다."
-    :e==="browser"?"MMS: 가볍지만 음질은 보통이고 목소리는 하나뿐입니다."
-    :(!L.s&&!L.m)?"이 언어는 브라우저용 AI 모델이 없어 다운로드하려면 Azure 키가 필요합니다. '기기 음성'은 듣기만 가능합니다.":"";
+    :e==="browser"?"MMS: 가볍지만 음질은 보통이고 목소리는 하나뿐입니다. 첫 사용 시 언어별로 모델을 내려받습니다."
+    :e==="azure"?"Azure Speech 키가 필요합니다. 중국어를 포함해 8개 언어를 지원합니다."
+    :"기기·브라우저에 설치된 음성이 있는 언어만 표시됩니다. 듣기만 가능하고 파일은 저장되지 않습니다.";
   $("azbox").classList.toggle("hide",e!=="azure");
   $("ratebox").classList.toggle("hide",e==="browser");
   $("fmtbox").classList.toggle("hide",e==="speak");
@@ -143,8 +162,8 @@ function refresh(){
     else for(const v of wsVoices)addOpt(sel,v.voiceURI,`${v.name} (${v.lang})`);
   }else{addOpt(sel,"","기본 목소리 (이 모델은 하나뿐)");sel.disabled=true}
 }
-if("speechSynthesis" in window)speechSynthesis.onvoiceschanged=()=>{if(engine()==="speak")refresh()};
-$("lang").onchange=refresh;document.querySelectorAll("input[name=eng]").forEach(e=>e.onchange=refresh);refresh();
+if("speechSynthesis" in window)speechSynthesis.onvoiceschanged=()=>{if(engine()==="speak")refresh(true)};
+$("lang").onchange=()=>refresh(false);document.querySelectorAll("input[name=eng]").forEach(e=>e.onchange=()=>refresh(true));refresh(true);
 
 $("txt").oninput=()=>$("cnt").textContent=$("txt").value.length.toLocaleString();
 $("file").onchange=async e=>{const f=e.target.files[0];if(!f)return;$("txt").value=await f.text();$("txt").oninput()};
@@ -308,6 +327,12 @@ async function runAzure(text,L){
   return new Blob([h,...pcms],{type:"audio/wav"});
 }
 
+function fname(text,ext){
+  const head=Array.from(text.replace(/[\\/:*?"<>|\u0000-\u001f]/g," ").replace(/\s+/g," ").trim()).slice(0,15).join("").trim().replace(/[. ]+$/,"")||"tts";
+  const d=new Date(),p=n=>String(n).padStart(2,"0");
+  const ts=`${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+  return `${head}_${ts}.${ext}`;
+}
 function speakChunk(t,L,voice,rate){
   return new Promise((res,rej)=>{
     const u=new SpeechSynthesisUtterance(t);u.lang=L.c;if(voice)u.voice=voice;u.rate=rate;
@@ -346,7 +371,7 @@ $("go").onclick=async()=>{
     const blob=engine()==="azure"?await runAzure(text,L):await runModel(text,L,engine());
     if(url)URL.revokeObjectURL(url);
     url=URL.createObjectURL(blob);
-    const ext=fmt(),name=`tts_${$("lang").value}_${Date.now()}.${ext}`;
+    const ext=fmt(),name=fname(text,ext);
     $("out").innerHTML=`<audio controls src="${url}"></audio><a class="dl" href="${url}" download="${name}">${ext.toUpperCase()} 다운로드 (${(blob.size/1048576).toFixed(1)} MB)</a>`;
     msg.textContent="완료!";
   }catch(e){msg.className="msg err";msg.textContent="실패: "+e.message}
